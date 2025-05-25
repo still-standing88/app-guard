@@ -1,0 +1,3 @@
+SCons
+pybind11
+setuptools

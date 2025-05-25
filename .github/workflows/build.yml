@@ -1,0 +1,151 @@
+name: Build AppGuard (Robust CI Attempt)
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        compiler: [gcc, clang]
+    name: Linux-${{ matrix.compiler }}-Py${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+            sudo apt-get install -y g++ libx11-dev
+            echo "CC=gcc" >> $GITHUB_ENV
+            echo "CXX=g++" >> $GITHUB_ENV
+          else
+            sudo apt-get install -y clang lld libx11-dev
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+
+      - name: Install Python build tools
+        run: |
+          python -m pip install --upgrade pip scons pybind11 wheel setuptools
+
+      - name: Build with SCons
+        run: |
+          scons -j$(nproc) arch=x86_64 compiler_arg=${{ matrix.compiler }} build_mode=static build_type=release build_python=True
+
+      - name: Build Python wheel
+        run: python setup.py bdist_wheel
+
+      - name: Stage wheel
+        run: |
+          mkdir wheels
+          cp dist/*.whl wheels/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-linux-${{ matrix.compiler }}-Py${{ matrix.python }}
+          path: wheels/*.whl
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+    name: Windows-MSVC-Py${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Python build tools
+        run: python -m pip install --upgrade pip scons pybind11 wheel setuptools
+
+      - name: Build with SCons
+        shell: bash
+        run: |
+          scons -j2 arch=x86_64 compiler_arg=msvc build_mode=static build_type=release build_python=True
+
+      - name: Build Python wheel
+        run: python setup.py bdist_wheel
+
+      - name: Stage wheel
+        run: |
+          mkdir wheels
+          copy dist\*.whl wheels\
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-windows-msvc-Py${{ matrix.python }}
+          path: wheels/*.whl
+
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        arch: [x64, arm64]
+    name: macOS-${{ matrix.arch }}-Py${{ matrix.python }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'macos-14' || 'macos-13' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Python build tools
+        run: python -m pip install --upgrade pip scons pybind11 wheel setuptools
+
+      - name: Build with SCons
+        run: |
+          CORES=$(sysctl -n hw.ncpu)
+          scons -j$CORES arch=${{ matrix.arch }} compiler_arg=clang build_mode=static build_type=release build_python=True
+
+      - name: Build Python wheel
+        run: python setup.py bdist_wheel
+
+      - name: Stage wheel
+        run: |
+          mkdir wheels
+          cp dist/*.whl wheels/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-macos-${{ matrix.arch }}-Py${{ matrix.python }}
+          path: wheels/*.whl
+
+  consolidate:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: all-wheels/
+          merge-multiple: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AppGuard-All-Wheels
+          path: all-wheels/*.whl

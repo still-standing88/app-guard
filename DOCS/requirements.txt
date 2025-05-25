@@ -1,0 +1,7 @@
+docutils
+breathe
+sphinx>=4.0
+sphinx_rtd_theme
+sphinx-sitemap
+myst-parser
+sphinx-autobuild
