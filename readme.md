@@ -53,7 +53,7 @@ scons
 
 
 ## Documentation
-Documentation can be found [here](https://github.com/still-standing88/app-guard-docs)
+Documentation can be found [here](https://still-standing88.github.io/app-guard-docs/)
 
 ## License
 
