@@ -103,7 +103,7 @@ print(f"Main C++ Lib Mode: {build_mode}, Build Python: {build_python}")
 conf.env.Append(CXXFLAGS=['/std:c++17'] if compiler == 'msvc' else ['-std=c++17'])
 if compiler == 'msvc':
     conf.env.Append(CXXFLAGS=['/EHsc', '/W3'], CPPDEFINES=['_CRT_SECURE_NO_WARNINGS', '_WINSOCK_DEPRECATED_NO_WARNINGS'])
-    conf.env.Append(CCFLAGS=['/MDd'] if build_type == 'debug' else ['/MD'])  
+    conf.env.Append(CCFLAGS=['/MTd'] if build_type == 'debug' else ['/MT'])  
 elif compiler == 'clang' or compiler == 'gcc':
     conf.env.Append(CXXFLAGS=['-Wall', '-Wextra', '-Wno-unused-parameter', '-Wno-deprecated-declarations'])
 

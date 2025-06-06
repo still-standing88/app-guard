@@ -77,7 +77,7 @@ extra_link_args_platform = []
 
 
 if current_platform == "windows":
-    crt_flag = "/MD" + ('d' if resolved_lib_build_type == 'debug' else '')
+    crt_flag = "/MTd" if resolved_lib_build_type == 'debug' else '/MT'
     extra_compile_args.extend([crt_flag, "/EHsc", "/D_WIN32", "/DUNICODE", "/D_UNICODE", "/W3"])
 
     link_libraries.append('AppGuard')
@@ -114,7 +114,7 @@ ext_modules = [
 
 setup(
     name="AppGuard",
-    version="1.0.1",
+    version="1.0.2",
     author="still-standing88",
     url="https://github.com/still-standing88/app-guard",
     description="Python wrapper for the AppGuard library (pybind11)",
